@@ -1,6 +1,7 @@
 
 import sqlite3
 
+
 def setup_database():
     # Connect to SQLite database (or create it if it doesn't exist)
     conn = sqlite3.connect('inventory.db')
@@ -22,16 +23,18 @@ def setup_database():
     # Close the connection
     conn.close()
 
+
 def insert_sample_data():
     conn = sqlite3.connect('inventory.db')
     cursor = conn.cursor()
 
     # Sample data
     parts = [
-        (1, 'Windshield', 10, 150),
-        (2, 'Tire', 50, 75),
-        (3, 'Brake Pad', 100, 30),
-        (4, 'Tesla Display', 5, 2000)
+        (1, 'Tesla Windshield', 10, 1500),
+        (2, 'Porsche Tire', 50, 750),
+        (3, 'Porsche Brake Pad', 100, 300),
+        (4, 'Tesla Display', 5, 2000),
+        (5, 'Tesla Bumper', 5, 2000)
     ]
 
     # Inserting data
@@ -42,6 +45,7 @@ def insert_sample_data():
     conn.close()
     print("Sample data inserted successfully")
 
+
 def get_inventory():
     # Connect to the SQLite database
     conn = sqlite3.connect('inventory.db')
@@ -50,17 +54,19 @@ def get_inventory():
     # SQL query to fetch all entries from the inventory table
     query = "SELECT * FROM inventory;"
     cursor.execute(query)
-    
+
     # Fetch all rows
     rows = cursor.fetchall()
-    
+
     # Format the results into a readable format
-    inventory_list = [{"part_id": row[0], "part_name": row[1], "quantity": row[2], "price": row[3]} for row in rows]
+    inventory_list = [{"part_id": row[0], "part_name": row[1],
+                       "quantity": row[2], "price": row[3]} for row in rows]
 
     # Close the connection
     conn.close()
 
     return inventory_list
+
 
 def clear_database():
     # Connect to the SQLite database

@@ -1,6 +1,14 @@
 import autogen
+import base64
 from autogen.agentchat.contrib.multimodal_conversable_agent import MultimodalConversableAgent
 from inventory import get_inventory
+from flask import Flask, request, render_template
+
+# Test Images
+# https://teslamotorsclub.com/tmc/attachments/camphoto_1144747756-jpg.650059/
+# https://cdn.motor1.com/images/mgl/o6rkL/s1/tesla-model-3-broken-screen.webp
+
+app = Flask(__name__)
 
 config_list = autogen.config_list_from_json("OAI_CONFIG_LIST")
 
@@ -15,7 +23,7 @@ llm_config = {"config_list": config_list}
 
 get_inventory_declaration = {
     "name": "get_inventory",
-    "description": "Retrieves the inventory details for a specified spare part."
+    "description": "Retrieves the inventory list"
 }
 
 
@@ -47,7 +55,7 @@ inventory_manager = autogen.AssistantAgent(
 
 customer_support_agent = autogen.AssistantAgent(
     name="customer_support_agent",
-    system_message="An agent adept in email composition, tasked with drafting and sending client messages following confirmation of inventory and pricing details. It signals task completion by responding with 'TERMINATE' after the email is sent.",
+    system_message="Customer Suppport Agent, responsible for drafting client emails following confirmation of inventory and pricing details specific to the brand (and damage if visible) of the car. It signals task completion by responding with 'TERMINATE' after the email has been written.",
     llm_config=llm_config
 )
 
@@ -60,14 +68,33 @@ manager = autogen.GroupChatManager(
     groupchat=groupchat, llm_config=llm_config
 )
 
-user_proxy.initiate_chat(
-    manager, message="""
-        Process Overview:
-        Step 1: Damage Analyst identifies the car brand and the requested part from the customer's message and image.
-        Step 2: Inventory Manager verifies part availability in the database.
-        Step 3: Customer Support Agent composes and sends a response email to the customer.
 
-        Customer's Message: 'My Display has been stolen, do you have them in stock?'
-        Image Reference: [Tesla Display Image](https://custom-tesla.com/cdn/shop/products/image_1445x.heic?v=1665410372)
-    """, clear_history=True
-)
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        image_url = request.form['image']
+        customer_message = request.form['message']
+
+        initiate_chat(image_url, customer_message)
+
+        return render_template('result.html', result="Thank you for reaching out. We're on it and will be in touch with you shortly!")
+    else:
+        return render_template('index.html')
+
+
+def initiate_chat(image_url, message):
+    user_proxy.initiate_chat(
+        manager, message=f"""
+            Process Overview:
+            Step 1: Damage Analyst identifies the car brand and the requested part (is something central, or something broken or missing) from the customer's message and image.
+            Step 2: Inventory Manager verifies part availability in the database.
+            Step 3: Customer Support Agent composes and sends a response email to the customer.
+
+            Customer's Message: '{message}'
+            Image Reference: {image_url})
+        """, clear_history=True
+    )
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
