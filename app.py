@@ -1,7 +1,8 @@
 import autogen
 import base64
 from autogen.agentchat.contrib.multimodal_conversable_agent import MultimodalConversableAgent
-from inventory import get_inventory
+from inventory import get_inventory, get_inventory_declaration
+from mail_sender import send_mail, send_email_declaration
 from flask import Flask, request, render_template
 
 # Test Images
@@ -21,11 +22,6 @@ config_list_4v = autogen.config_list_from_json(
 
 llm_config = {"config_list": config_list}
 
-get_inventory_declaration = {
-    "name": "get_inventory",
-    "description": "Retrieves the inventory list"
-}
-
 
 def is_termination_msg(data):
     has_content = "content" in data and data["content"] is not None
@@ -37,7 +33,7 @@ user_proxy = autogen.UserProxyAgent(
     is_termination_msg=is_termination_msg,
     system_message="You are the boss",
     human_input_mode='NEVER',
-    function_map={"get_inventory": get_inventory}
+    function_map={"get_inventory": get_inventory, "send_mail": send_mail}
 )
 
 damage_analyst = MultimodalConversableAgent(
@@ -49,15 +45,12 @@ damage_analyst = MultimodalConversableAgent(
 inventory_manager = autogen.AssistantAgent(
     name="inventory_manager",
     system_message="An inventory management specialist, this agent accesses the inventory database to provide information on the availability and pricing of spare parts.",
-    llm_config={"config_list": config_list,
-                "functions": [get_inventory_declaration]}
-)
+    llm_config={"config_list": config_list, "functions": [get_inventory_declaration]})
 
 customer_support_agent = autogen.AssistantAgent(
     name="customer_support_agent",
-    system_message="Customer Suppport Agent, responsible for drafting client emails following confirmation of inventory and pricing details specific to the brand (and damage if visible) of the car. It signals task completion by responding with 'TERMINATE' after the email has been written.",
-    llm_config=llm_config
-)
+    system_message="A Customer Suppport Agent, responsible for drafting and sending client emails following confirmation of inventory and pricing details specific to the brand (and damage if visible) of the car. It signals task completion by responding with 'TERMINATE' after the email has been sent.",
+    llm_config={"config_list": config_list, "functions": [send_email_declaration]})
 
 groupchat = autogen.GroupChat(
     agents=[user_proxy, damage_analyst, inventory_manager,
@@ -73,16 +66,18 @@ manager = autogen.GroupChatManager(
 def index():
     if request.method == 'POST':
         image_url = request.form['image']
+        customer_email = request.form['email']
         customer_message = request.form['message']
 
-        initiate_chat(image_url, customer_message)
+        initiate_chat(image_url, customer_message, customer_email)
 
-        return render_template('result.html', result="Thank you for reaching out. We're on it and will be in touch with you shortly!")
+        return render_template('result.html')
     else:
         return render_template('index.html')
 
 
-def initiate_chat(image_url, message):
+def initiate_chat(image_url, message, customer_email):
+    print(f"Mail: {customer_email}")
     user_proxy.initiate_chat(
         manager, message=f"""
             Process Overview:
@@ -91,10 +86,10 @@ def initiate_chat(image_url, message):
             Step 3: Customer Support Agent composes and sends a response email to the customer.
 
             Customer's Message: '{message}'
-            Image Reference: {image_url})
-        """, clear_history=True
+            Image Reference: '{image_url})'
+            Customers Email: '{customer_email}'
+        """
     )
-
 
 if __name__ == '__main__':
     app.run(debug=True)

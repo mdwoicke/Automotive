@@ -1,6 +1,11 @@
 
 import sqlite3
 
+get_inventory_declaration = {
+    "name": "get_inventory",
+    "description": "Retrieves the inventory list"
+}
+
 
 def setup_database():
     # Connect to SQLite database (or create it if it doesn't exist)
